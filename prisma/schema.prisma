@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String         @id @default(cuid())
+  name             String?
+  email            String?        @unique
+  emailVerified    DateTime?
+  image            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  accounts         Account[]
+  sessions         Session[]
+  offres           Offre[]
+  rendezVous       RendezVous[]
+  favoris          Favoris[]
+  messagesSent     Message[]      @relation("sentMessages")
+  messagesReceived Message[]      @relation("receivedMessages")
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+model Offre {
+  id          String       @id @default(cuid())
+  userId      String
+  type        String
+  title       String
+  description String
+  category    String
+  location    String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  favoris     Favoris[]
+  messages    Message[]
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rendezVous  RendezVous[]
+
+  @@index([userId])
+  @@map("offres")
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  content    String
+  read       Boolean  @default(false)
+  fromUserId String
+  toUserId   String
+  fromUser   User     @relation("sentMessages", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser     User     @relation("receivedMessages", fields: [toUserId], references: [id], onDelete: Cascade)
+  offreId    String?
+  offre      Offre?   @relation(fields: [offreId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model RendezVous {
+  id               String   @id @default(cuid())
+  userId           String
+  offreId          String
+  date             DateTime
+  statut           String   @default("en_attente")
+  demandeurAccepte Boolean  @default(false)
+  offreurAccepte   Boolean  @default(false)
+  lastModifiedBy   String?
+  message          String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  offre            Offre    @relation(fields: [offreId], references: [id], onDelete: Cascade)
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("rendezvous")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data      String?
+
+  @@map("notifications")
+}
+
+model Favoris {
+  id        String   @id @default(cuid())
+  userId    String
+  offreId   String
+  createdAt DateTime @default(now())
+  offre     Offre    @relation(fields: [offreId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, offreId])
+  @@map("favoris")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verificationtokens")
+}
